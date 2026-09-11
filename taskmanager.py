@@ -1,5 +1,19 @@
 import unittest
 
+#custom exceptions
+class TaskNotFoundError(Exception):
+    pass
+
+
+class EmptyTaskNameError(Exception):
+    pass
+
+
+class TaskAlreadyDoneError(Exception):
+    def __init__(self):
+        super().__init__("This task has already been done.")
+
+
 class Task():
     #initializing parameter
     def __init__(self, task_id, name, status = "pending"): #default parameter just need =, == is for boolean.
@@ -31,6 +45,26 @@ def log_action(func):  #func is whichever function is decorated
         return wrapper
 
 
+class PriorityTask(Task):
+    def __init__(self, task_id, name, priority):
+        #super() reuses the setup code, not the data, only save u from doing self.("") = ..., dont need to pass self in init anymore. and prio since it deal with parent param only
+        super().__init__(task_id, name) #i need to reinsert the param of parent class, it can give acc to code only, not the id/name
+        self.priority = priority
+
+
+    # __str__ controls how an object looks when printed/str()'d; overriding it here lets PriorityTask show its extra priority attribute instead of Task's default format
+    def __str__(self):  
+        return f"[{self.task_id}] {self.name} ({self.status}) - Priority: {self.priority}"
+        
+print(PriorityTask(1, "Finish report", "High"))
+        
+t1 = Task(2, "Water plants")
+t2 = PriorityTask(3, "Submit assignment", "High")
+all_tasks = [t1, t2]
+
+for task in all_tasks:
+    print(task)
+
 class TaskManager():
     def __init__(self):
         self.tasks = []
@@ -39,7 +73,7 @@ class TaskManager():
     @log_action
     def add_task(self, name):
         if name.strip() == "" :
-            raise ValueError("There is no input!")
+            raise EmptyTaskNameError("There is no input!")
         
         new_task = Task(self.next_id, name)
         self.tasks.append(new_task)
@@ -50,10 +84,10 @@ class TaskManager():
         for task in self.tasks:
             if task.task_id == task_id:
                 if task.status == "Done":
-                    raise ValueError("The task is already marked as done")
+                    raise TaskAlreadyDoneError
                 task.status = "Done"
                 return 
-        raise ValueError(f"No task with id {task_id} found.")
+        raise TaskNotFoundError(f"No task with id {task_id} found.")
 
     @log_action
     def remove_task(self,task_id):
@@ -61,7 +95,7 @@ class TaskManager():
             if task.task_id == task_id:
               self.tasks.remove(task)
               return
-        raise ValueError(f"The task cannot be found for {task_id}")
+        raise TaskNotFoundError(f"The task cannot be found for {task_id}")
 
     @log_action
     def get_pending(self):
@@ -89,6 +123,9 @@ class TaskManager():
 
             add_ids = [task.task_id for task in self.tasks] #list comprehension, for tasks in list of self.tasks, print(task.task_id)
             self.next_id = max(add_ids) + 1
+
+
+
         
         
     #unit testing
@@ -103,7 +140,7 @@ class TestTaskManager(unittest.TestCase):
         
     def test_add_task_rejects_empty_name(self):
         m = TaskManager()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(EmptyTaskNameError):
             m.add_task("")
 
     def test_mark_done(self):
@@ -114,14 +151,14 @@ class TestTaskManager(unittest.TestCase):
 
     def test_mark_done_missing_task_raise(self):  # dont need to do any add or wtv, we just wanna check with empty tasks
         m = TaskManager()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TaskNotFoundError):
             m.mark_done(999)      #why the value 999
 
     def test_mark_done_twice_raises(self):
         m = TaskManager()
         m.add_task("Test task")
         m.mark_done(1)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TaskAlreadyDoneError):
             m.mark_done(1)
 
     def test_remove_task(self):
@@ -132,7 +169,7 @@ class TestTaskManager(unittest.TestCase):
 
     def test_remove_task_missing_raises(self):
         m = TaskManager()
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TaskNotFoundError):
             m.remove_task(999)
 
     def test_get_pending(self):
@@ -149,8 +186,10 @@ unittest.main(argv=[""], exit=False)
 
 
 
+
+
 #try, except only can print one outcome at a time, if you put two different add_task, it never reaches the 2nd
-# manager = TaskManager()
+manager = TaskManager()
 
 #test of add_task, p.s if i want to exclude this, i still need to do something like manager.add_task("Do something")
 # task_names = ["", "Do homework", "Dont forget to take out trash"]
@@ -161,8 +200,6 @@ unittest.main(argv=[""], exit=False)
     
 #     except ValueError as e:
 #         print(f"Couldn't add task: {e}")
-
-# manager.add_task("Do 1")
 # manager.add_task("Doing 2nd thing")
 # manager.add_task("Doing 3rd thing")
 # print(manager.tasks)
