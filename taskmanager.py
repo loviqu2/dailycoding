@@ -13,6 +13,23 @@ class TaskAlreadyDoneError(Exception):
     def __init__(self):
         super().__init__("This task has already been done.")
 
+class FileStorage():
+    def save(self, tasks, filename):
+        with open(filename, "w") as f: 
+                    for task in tasks:
+                        f.write(f"{task.task_id},{task.name},{task.status} \n") #\n at the end is break line
+
+    def load(self, filename):
+        tasks = []
+        with open(filename, "r") as f:
+            for line in f:
+                parts = line.strip().split(",")
+                task_id = int(parts[0]) #parts[0] is just a string "1", need to int()
+                name = parts[1]
+                status = parts[2]
+                new_task = Task(task_id, name, status)
+                tasks.append(new_task)
+        return tasks
 
 class Task():
     #initializing parameter
@@ -55,20 +72,24 @@ class PriorityTask(Task):
     # __str__ controls how an object looks when printed/str()'d; overriding it here lets PriorityTask show its extra priority attribute instead of Task's default format
     def __str__(self):  
         return f"[{self.task_id}] {self.name} ({self.status}) - Priority: {self.priority}"
-        
-print(PriorityTask(1, "Finish report", "High"))
-        
-t1 = Task(2, "Water plants")
-t2 = PriorityTask(3, "Submit assignment", "High")
-all_tasks = [t1, t2]
 
-for task in all_tasks:
-    print(task)
+
+#testing for prioritytask class
+
+# print(PriorityTask(1, "Finish report", "High"))
+        
+# t1 = Task(2, "Water plants")
+# t2 = PriorityTask(3, "Submit assignment", "High")
+# all_tasks = [t1, t2]
+
+# for task in all_tasks:
+#     print(task)
 
 class TaskManager():
-    def __init__(self):
+    def __init__(self, storage = None): #set default value so that existing calls keep working
         self.tasks = []
         self.next_id = 1
+        self.storage = storage or FileStorage()
 
     @log_action
     def add_task(self, name):
@@ -103,26 +124,21 @@ class TaskManager():
             if task.status == "pending": #pending has to be exact wording, we can use .lower() for future
                 yield task
     
+    # @log_action
+    # def save_to_file(self, filename):
+    #     with open(filename, "w") as f: 
+    #         for task in self.tasks:
+    #             f.write(f"{task.task_id},{task.name},{task.status} \n") #\n at the end is break line
+
     @log_action
     def save_to_file(self, filename):
-        with open(filename, "w") as f: 
-            for task in self.tasks:
-                f.write(f"{task.task_id},{task.name},{task.status} \n") #\n at the end is break line
+        self.storage.save(self.tasks,filename)
 
     @log_action
     def load_from_file(self, filename):
-        self.tasks = []
-        with open(filename, "r") as f:
-            for line in f:
-                parts = line.strip().split(",")
-                task_id = int(parts[0]) #parts[0] is just a string "1", need to int()
-                name = parts[1]
-                status = parts[2]
-                new_task = Task(task_id, name, status)
-                self.tasks.append(new_task)
-
-            add_ids = [task.task_id for task in self.tasks] #list comprehension, for tasks in list of self.tasks, print(task.task_id)
-            self.next_id = max(add_ids) + 1
+        self.tasks = self.storage.load(filename)
+        add_ids = [task.task_id for task in self.tasks] #list comprehension, for tasks in list of self.tasks, print(task.task_id)
+        self.next_id = max(add_ids) + 1
 
 
 
